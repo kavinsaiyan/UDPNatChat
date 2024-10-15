@@ -1,0 +1,3 @@
+-[ ] Disconnect Timeout for clients
+-[ ] NAT Punchthrough
+-[ ] Mobile chat app
