@@ -125,6 +125,8 @@ public static class UDPServerConsole
 
                 for(int i=0; i< clientData.Count;i++)
                 {
+                    if(clientData[i] == currentClient)
+                        continue;
                     intBytes = BitConverter.GetBytes(clientData[i].clientID);
                     Buffer.BlockCopy(intBytes,0,buffer,writePos,intBytes.Length);
                     writePos+=intBytes.Length;
