@@ -9,7 +9,8 @@ using System.Linq;
 namespace UDPConsoleClient;
 public enum MessageType : byte
 {
-    None, InitialData, HeartBeat,
+    None, InitialData, HeartBeat, RequestClientList, ConnectToClient, 
+    ClientListResponse, DisconnectFromServer
 }
 
 public static class UDPClientConsole
@@ -19,10 +20,11 @@ public static class UDPClientConsole
 
     private static Socket _client = null;
     private static bool _initialDataSent = false;
+    private static bool _requestClientList = false;
 
     public static async Task Main(string[] args)
     {
-        _ = Task.Run(ListenForUserStop);
+        _ = Task.Run(ListenForUserInput);
 
         _client = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
 
@@ -45,7 +47,7 @@ public static class UDPClientConsole
         }
     }
 
-    public static void ListenForUserStop()
+    public static void ListenForUserInput()
     {
         while (true)
         {
@@ -54,6 +56,10 @@ public static class UDPClientConsole
             {
                 _stopProgram = true;
                 break;
+            }
+            else if (consoleKeyInfo.Key == ConsoleKey.R)
+            {
+                _requestClientList = true;
             }
         }
     }
@@ -66,8 +72,27 @@ public static class UDPClientConsole
             {
                 await _client.ReceiveAsync(_buffer);
 
-                MessageType messageType =(MessageType) _buffer[0];
+                int readPos = 0;
+                MessageType messageType = (MessageType) _buffer[readPos++];
                 // Logger.Log("message type is "+messageType);
+                switch(messageType)
+                {
+                    case MessageType.ClientListResponse:
+                        int len = BitConverter.ToInt32(_buffer,readPos);
+                        readPos+=4;
+                        for(int i = 0; i < len; i++)
+                        {
+                            int clientID = BitConverter.ToInt32(_buffer, readPos);
+                            readPos+=4;
+                            Logger.Log("client id : "+clientID);
+                        }
+                        
+                        break;
+                    case MessageType.DisconnectFromServer:
+                        Logger.Log("Received Server Disconnect");
+                        _stopProgram = true;
+                        break;
+                }
             }
             await Task.Delay(10);
         }
@@ -79,11 +104,11 @@ public static class UDPClientConsole
         {
             if (_client.Connected && _client.Poll(-1, SelectMode.SelectWrite))
             {
+                int pos =0;
                 if(_initialDataSent == false)
                 {
                     _initialDataSent = true;
                     MessageType messageType = MessageType.InitialData;
-                    int pos = 0;
 
                     _buffer[pos++] = (byte)messageType;
 
@@ -104,10 +129,17 @@ public static class UDPClientConsole
                     int bytesSent =  await _client.SendAsync(new ArraySegment<byte>(_buffer, 0, pos));
                     // Logger.Log("Written type is " + messageType+ " and sent bytes is "+ bytesSent);
                 }
+                else if(_requestClientList)
+                {
+                    _requestClientList = false;
+                    
+                    MessageType messageType = MessageType.RequestClientList;
+                    _buffer[pos++] = (byte)messageType;
+                    int bytesSent =  await _client.SendAsync(new ArraySegment<byte>(_buffer, 0, pos));
+                }
                 else
                 {
                     MessageType messageType = MessageType.HeartBeat;
-                    int pos = 0;
                     _buffer[pos++] = (byte)messageType;
                     int bytesSent =  await _client.SendAsync(new ArraySegment<byte>(_buffer, 0, pos));
                     // Logger.Log("Written type is " + messageType+ " and sent bytes is "+ bytesSent);
