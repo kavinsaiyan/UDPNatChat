@@ -2,17 +2,10 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
-using System.Text.Encodings;
 using System.Text;
-using System.Buffers;
-using System.Linq;
-namespace UDPConsoleClient;
-public enum MessageType : byte
-{
-    None, InitialData, HeartBeat, RequestClientList, ConnectToClient, 
-    ClientListResponse, DisconnectFromServer
-}
+using UDPConsoleCommonLib;
 
+namespace UDPConsoleClient;
 public static class UDPClientConsole
 {
     private static bool _stopProgram = false;
@@ -73,17 +66,15 @@ public static class UDPClientConsole
                 await _client.ReceiveAsync(_buffer);
 
                 int readPos = 0;
-                MessageType messageType = (MessageType) _buffer[readPos++];
+                MessageType messageType = (MessageType) NetworkExtensions.ReadByte(ref _buffer, ref readPos);
                 // Logger.Log("message type is "+messageType);
                 switch(messageType)
                 {
                     case MessageType.ClientListResponse:
-                        int len = BitConverter.ToInt32(_buffer,readPos);
-                        readPos+=4;
+                        int len = NetworkExtensions.ReadInt(ref _buffer, ref readPos);
                         for(int i = 0; i < len; i++)
                         {
-                            int clientID = BitConverter.ToInt32(_buffer, readPos);
-                            readPos+=4;
+                            int clientID = NetworkExtensions.ReadInt(ref _buffer, ref readPos);
                             Logger.Log("client id : "+clientID);
                         }
                         
@@ -108,23 +99,15 @@ public static class UDPClientConsole
                 if(_initialDataSent == false)
                 {
                     _initialDataSent = true;
-                    MessageType messageType = MessageType.InitialData;
+                    byte messageType = (byte)MessageType.InitialData;
 
-                    _buffer[pos++] = (byte)messageType;
+                    NetworkExtensions.WriteByte(ref _buffer, ref pos, in messageType);
 
                     string localIp = GetLocalIPAddress().ToString();
-                    byte[] s = Encoding.ASCII.GetBytes(localIp);
-                    byte[] len = BitConverter.GetBytes(s.Length);
-                    Buffer.BlockCopy(len, 0, _buffer, pos, len.Length);
-                    pos += len.Length;
-
-                    Buffer.BlockCopy(s, 0, _buffer, pos, s.Length);
-                    pos += s.Length;
+                    NetworkExtensions.WriteString(ref _buffer, ref pos, in localIp);
                     
                     int port = 7777;
-                    byte[] portData = BitConverter.GetBytes(port);
-                    Buffer.BlockCopy(portData, 0, _buffer, pos, portData.Length);
-                    pos += portData.Length;
+                    NetworkExtensions.WriteInt(ref _buffer, ref pos, in port);
 
                     int bytesSent =  await _client.SendAsync(new ArraySegment<byte>(_buffer, 0, pos));
                     // Logger.Log("Written type is " + messageType+ " and sent bytes is "+ bytesSent);
@@ -133,14 +116,14 @@ public static class UDPClientConsole
                 {
                     _requestClientList = false;
                     
-                    MessageType messageType = MessageType.RequestClientList;
-                    _buffer[pos++] = (byte)messageType;
+                    byte messageType = (byte) MessageType.RequestClientList;
+                    NetworkExtensions.WriteByte(ref _buffer, ref pos, in messageType);
                     int bytesSent =  await _client.SendAsync(new ArraySegment<byte>(_buffer, 0, pos));
                 }
                 else
                 {
-                    MessageType messageType = MessageType.HeartBeat;
-                    _buffer[pos++] = (byte)messageType;
+                    byte messageType = (byte)MessageType.HeartBeat;
+                    NetworkExtensions.WriteByte(ref _buffer, ref pos, in messageType);
                     int bytesSent =  await _client.SendAsync(new ArraySegment<byte>(_buffer, 0, pos));
                     // Logger.Log("Written type is " + messageType+ " and sent bytes is "+ bytesSent);
                 }

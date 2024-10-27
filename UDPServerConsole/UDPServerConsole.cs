@@ -4,15 +4,10 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using System.Text;
+using UDPConsoleCommonLib;
+using System.Runtime.InteropServices;
 
 namespace UDPServerConsole;
-
-public enum MessageType : byte
-{
-    None, InitialData, HeartBeat, RequestClientList, ConnectToClient,
-    ClientListResponse,
-    DisconnectFromServer
-}
 
 public static class UDPServerConsole
 {
@@ -102,12 +97,8 @@ public static class UDPServerConsole
         switch (messageType)
         {
             case MessageType.InitialData:
-                int len = BitConverter.ToInt32(buffer, readPos);
-                readPos += 4; // this is because an integer takes upto four bytes 
-                string localIp = Encoding.ASCII.GetString(buffer, readPos, len);
-                readPos += len;
-                int port = BitConverter.ToInt32(buffer, readPos);
-                //pos += 4; // this is because an integer takes upto four bytes 
+                string localIp = NetworkExtensions.ReadString(ref buffer, ref readPos);
+                int port = NetworkExtensions.ReadInt(ref buffer, ref readPos);
                 if(IPAddress.TryParse(localIp, out IPAddress localIPAddress))
                     currentClient.localEndPoint = new IPEndPoint(localIPAddress,port);
                 else
@@ -118,18 +109,14 @@ public static class UDPServerConsole
                 currentClient.heartBeatMissCount = 0;
                 break;
             case MessageType.RequestClientList:
-                buffer[writePos++] = (byte)MessageType.ClientListResponse;
-                byte[] intBytes = BitConverter.GetBytes(clientData.Count);
-                Buffer.BlockCopy(intBytes,0,buffer,writePos,intBytes.Length);
-                writePos+=intBytes.Length;
+                NetworkExtensions.WriteByte(ref buffer,ref writePos,(byte)MessageType.ClientListResponse);
+                NetworkExtensions.WriteInt(ref buffer, ref writePos, clientData.Count);
 
                 for(int i=0; i< clientData.Count;i++)
                 {
                     if(clientData[i] == currentClient)
                         continue;
-                    intBytes = BitConverter.GetBytes(clientData[i].clientID);
-                    Buffer.BlockCopy(intBytes,0,buffer,writePos,intBytes.Length);
-                    writePos+=intBytes.Length;
+                    NetworkExtensions.WriteInt(ref buffer,ref writePos, in clientData[i].clientID);
                 }
                 await server.SendToAsync(new ArraySegment<byte>(buffer,0,writePos),currentClient.remoteEndPoint);
                 break;    
@@ -147,15 +134,16 @@ public static class UDPServerConsole
             {
                 if(server.Poll(-1, SelectMode.SelectWrite))
                 {
+                    int readPos = 0;
                     ClientData currentClient = clientData[i];
-                    buffer[0] = (byte)MessageType.HeartBeat;
-                    await server.SendToAsync(new ArraySegment<byte>(buffer,0,1),currentClient.remoteEndPoint);
+                    NetworkExtensions.WriteByte(ref buffer, ref readPos, (byte)MessageType.HeartBeat);
+                    await server.SendToAsync(new ArraySegment<byte>(buffer,0,readPos),currentClient.remoteEndPoint);
                     currentClient.heartBeatMissCount++;
                     if(currentClient.heartBeatMissCount > ClientData.MAX_HEART_BEAT_MISS_COUNT)
                     {
                         clientData.Remove(currentClient);
-                        buffer[0] = (byte)MessageType.DisconnectFromServer;
-                        await server.SendToAsync(new ArraySegment<byte>(buffer,0,1), currentClient.remoteEndPoint);
+                        NetworkExtensions.WriteByte(ref buffer, ref readPos, (byte)MessageType.DisconnectFromServer);
+                        await server.SendToAsync(new ArraySegment<byte>(buffer,0,readPos), currentClient.remoteEndPoint);
                         Logger.Log("Disconnected client : "+currentClient.clientID);
                     }
                 }
