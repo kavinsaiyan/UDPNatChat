@@ -2,7 +2,6 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
-using System.Text;
 using UDPConsoleCommonLib;
 
 namespace UDPConsoleClient;
@@ -72,12 +71,14 @@ public static class UDPClientConsole
                 {
                     case MessageType.ClientListResponse:
                         int len = NetworkExtensions.ReadInt(ref _buffer, ref readPos);
+                        int[] clientIds = new int[len];
                         for(int i = 0; i < len; i++)
                         {
                             int clientID = NetworkExtensions.ReadInt(ref _buffer, ref readPos);
-                            Logger.Log("client id : "+clientID);
+                            clientIds[i] = clientID;
                         }
-                        
+                        int randomClientToConnect = CommonFunctioncs.RandomRange(0, len);
+                        Logger.Log("Random client to connect : "+randomClientToConnect)                        ;
                         break;
                     case MessageType.DisconnectFromServer:
                         Logger.Log("Received Server Disconnect");

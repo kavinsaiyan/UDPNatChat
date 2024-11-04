@@ -42,4 +42,17 @@ public static class NetworkExtensions
         Buffer.BlockCopy(writtenBytes,0,data,pos,writtenBytes.Length);
         pos+=writtenBytes.Length;
     }
+
+    public static IPAddress GetLocalIPAddress()
+    {
+        IPHostEntry hostEntry = Dns.GetHostEntry(Dns.GetHostName());
+        for(int i=0; i < hostEntry.AddressList.Length; i++)
+        {
+            if(hostEntry.AddressList[i].AddressFamily == AddressFamily.InterNetwork)
+            {
+                return hostEntry.AddressList[i];
+            }
+        }
+        return IPAddress.Any;
+    }
 }
