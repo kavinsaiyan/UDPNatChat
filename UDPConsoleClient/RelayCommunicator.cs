@@ -1,13 +1,18 @@
 using System.Net;
 using System.Threading.Tasks;
+using UDPConsoleClient;
 using UDPConsoleCommonLib;
 
 public class RelayCommunicator : INetworkOperator
 {
     private INetworkCommunicator _networkCommunicator;
+    private IPAddress[] _relayIP;
     public RelayCommunicator(INetworkCommunicator networkCommunicator)    
     {
         _networkCommunicator = networkCommunicator;
+        _relayIP = new IPAddress[] { 
+            IPAddress.Parse("127.0.0.1")
+        };
     }
 
     public bool CanProcessMessage(MessageType messageType)
@@ -15,9 +20,9 @@ public class RelayCommunicator : INetworkOperator
         return messageType == MessageType.HeartBeat;
     }
 
-    public void ProcessMessage(in byte[] data, in int pos, in int len, in IPAddress senderAddress)
+    public void ProcessMessage(MessageType messageType, in byte[] data, in int pos, in int len, in IPAddress senderAddress)
     {
-
+        Logger.Log("Received Heartbeat from "+senderAddress.ToString());
     }
 
 
@@ -32,14 +37,22 @@ public class RelayCommunicator : INetworkOperator
         string localIp = NetworkExtensions.GetLocalIPAddress().ToString();
         NetworkExtensions.WriteString(ref _buffer, ref pos, in localIp);
 
-        int port = 7777;
-        NetworkExtensions.WriteInt(ref _buffer, ref pos, in port);
+        NetworkExtensions.WriteInt(ref _buffer, ref pos, 7777);
 
-        // _networkCommunicator.SetDataToSend(new IPAddress[0],0, pos);
+        _networkCommunicator.SetDataToSend(_relayIP,0, pos);
     }
 
     public async Task SendHeartbeat()
     {
-
+        // while (!_stopProgram)
+        // {
+        //     if (_client.Connected && _client.Poll(-1, SelectMode.SelectWrite))
+        //     {
+        //         int pos =0;
+        //         byte messageType = (byte)MessageType.HeartBeat;
+        //         NetworkExtensions.WriteByte(ref _buffer, ref pos, in messageType);
+        //         int bytesSent = await _client.SendAsync(new ArraySegment<byte>(_buffer, 0, pos));
+        //     }
+        // }
     }
 }
