@@ -44,7 +44,7 @@ public class RelayCommunicator : INetworkOperator
 
     public async Task SendHeartbeat()
     {
-        // while (!_stopProgram)
+        // while (!_)
         // {
         //     if (_client.Connected && _client.Poll(-1, SelectMode.SelectWrite))
         //     {
