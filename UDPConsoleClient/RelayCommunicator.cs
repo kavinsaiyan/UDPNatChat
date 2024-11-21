@@ -7,6 +7,7 @@ public class RelayCommunicator : INetworkOperator
 {
     private INetworkCommunicator _networkCommunicator;
     private IPAddress[] _relayIP;
+    public bool sendHeartBeat = false;
     public RelayCommunicator(INetworkCommunicator networkCommunicator)    
     {
         _networkCommunicator = networkCommunicator;
@@ -44,15 +45,17 @@ public class RelayCommunicator : INetworkOperator
 
     public async Task SendHeartbeat()
     {
-        // while (!_)
-        // {
-        //     if (_client.Connected && _client.Poll(-1, SelectMode.SelectWrite))
-        //     {
-        //         int pos =0;
-        //         byte messageType = (byte)MessageType.HeartBeat;
-        //         NetworkExtensions.WriteByte(ref _buffer, ref pos, in messageType);
-        //         int bytesSent = await _client.SendAsync(new ArraySegment<byte>(_buffer, 0, pos));
-        //     }
-        // }
+        sendHeartBeat = true;
+        while (sendHeartBeat)
+        {
+            await Task.Delay(10);
+            // if (_client.Connected && _client.Poll(-1, SelectMode.SelectWrite))
+            // {
+            //     int pos =0;
+            //     byte messageType = (byte)MessageType.HeartBeat;
+            //     NetworkExtensions.WriteByte(ref _buffer, ref pos, in messageType);
+            //     int bytesSent = await _client.SendAsync(new ArraySegment<byte>(_buffer, 0, pos));
+            // }
+        }
     }
 }
