@@ -16,7 +16,7 @@ public class ClientCore : INetworkOperator
     public ClientCore(INetworkCommunicator networkCommunicator)
     {
         _networkCommunicator = networkCommunicator;
-        _acceptedMessages = new MessageType[] {MessageType.ClientListResponse , MessageType.TryConnectToClient };
+        _acceptedMessages = new MessageType[] { MessageType.ClientListResponse , MessageType.TryConnectToClient };
     }
 
     public void SetOtherClientID(int id)

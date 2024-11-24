@@ -1,0 +1,2 @@
+dotnet build UDPConsoleCommonLib/UDPConsoleCommonLib.csproj
+dotnet run --project UDPConsoleClient/UDPConsoleClient.csproj

@@ -17,7 +17,7 @@ public class ByteArrayBuffer
     {
         return NetworkExtensions.ReadInt(ref _buffer, ref _pos);
     }
-    public int ReadString()
+    public string ReadString()
     {
         return NetworkExtensions.ReadString(ref _buffer, ref _pos);
     }
