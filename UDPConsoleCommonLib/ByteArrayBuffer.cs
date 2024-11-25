@@ -2,6 +2,10 @@ public class ByteArrayBuffer
 {
     private byte[] _buffer;
     private int _pos=0;
+
+    public byte[] Buffer { get => _buffer; }
+    public int Pos => _pos;
+
     public ByteArrayBuffer(int size = 4096)
     {
         _buffer = new byte[size];

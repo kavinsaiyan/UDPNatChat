@@ -22,7 +22,7 @@ public class RelayCommunicator : INetworkOperator
         return messageType == MessageType.HeartBeat;
     }
 
-    public void ProcessMessage(MessageType messageType, in byte[] data, in int pos, in int len, in IPAddress senderAddress)
+    public void ProcessMessage(MessageType messageType, in byte[] data, in int pos, in int len, IPAddress senderAddress)
     {
         Logger.Log("Received Heartbeat from "+senderAddress.ToString());
     }
@@ -39,7 +39,7 @@ public class RelayCommunicator : INetworkOperator
 
         _networkCommunicator.Buffer.WriteInt(7777);
 
-        _networkCommunicator.SendTo(_relayIP);
+        Task.Run(() => _networkCommunicator.SendToAsync(_relayIP));
     }
 
     public void StartSendingHeartbeat()
@@ -64,7 +64,7 @@ public class RelayCommunicator : INetworkOperator
                 _networkCommunicator.Buffer.ResetPointer();
                 byte messageType = (byte)MessageType.HeartBeat;
                 _networkCommunicator.Buffer.WriteByte(in messageType);
-                _networkCommunicator.SendTo(_relayIP);
+                await _networkCommunicator.SendToAsync(_relayIP);
             }
         }
     }

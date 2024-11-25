@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using UDPConsoleCommonLib;
 
 namespace UDPConsoleClient;
-public static class UDPClientConsole
+public class UDPClientConsole 
 {
     private static bool _stopProgram = false;
     private static byte[] _buffer = new byte[4096];
@@ -13,18 +13,23 @@ public static class UDPClientConsole
     private static Socket _client = null;
     private static bool _initialDataSent = false;
     private static bool _requestClientList = false;
+    private static NetworkCommunicator networkCommunicator;
+    private static INetworkOperator[] networkOperators;
 
     public static async Task Main(string[] args)
     {
         _ = Task.Run(ListenForUserInput);
 
-        _client = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-
         try
         {
+            _client = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             _client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
             _client.Connect(IPAddress.Loopback, 7777);
-            
+
+            networkCommunicator = new NetworkCommunicator(_client);
+
+            networkOperators = new INetworkOperator[] { new RelayCommunicator(networkCommunicator)};
+
             _ = Task.Run(ReadAsync);
 
             await Task.Run(WriteAsync);
@@ -58,33 +63,39 @@ public static class UDPClientConsole
 
     public static async Task ReadAsync()
     {
+        IPEndPoint endPoint = null;
         while (!_stopProgram)
         {
             if(_client.Connected && _client.Poll(-1,SelectMode.SelectRead))
             {
-                await _client.ReceiveAsync(_buffer);
+                await _client.ReceiveFromAsync(_buffer, endPoint);
 
                 int readPos = 0;
                 MessageType messageType = (MessageType) NetworkExtensions.ReadByte(ref _buffer, ref readPos);
-                // Logger.Log("message type is "+messageType);
-                switch(messageType)
+                for(int i=0; i< networkOperators.Length; i++)
                 {
-                    case MessageType.ClientListResponse:
-                        int len = NetworkExtensions.ReadInt(ref _buffer, ref readPos);
-                        int[] clientIds = new int[len];
-                        for(int i = 0; i < len; i++)
-                        {
-                            int clientID = NetworkExtensions.ReadInt(ref _buffer, ref readPos);
-                            clientIds[i] = clientID;
-                        }
-                        int randomClientToConnect = CommonFunctioncs.RandomRange(0, len);
-                        Logger.Log("Random client to connect : "+randomClientToConnect)                        ;
-                        break;
-                    case MessageType.DisconnectFromServer:
-                        Logger.Log("Received Server Disconnect");
-                        _stopProgram = true;
-                        break;
+                    if(networkOperators[i].CanProcessMessage(messageType))
+                        networkOperators[i].ProcessMessage(messageType, in _buffer, 0, endPoint.Address);
                 }
+                // Logger.Log("message type is "+messageType);
+                // switch(messageType)
+                // {
+                //     case MessageType.ClientListResponse:
+                //         int len = NetworkExtensions.ReadInt(ref _buffer, ref readPos);
+                //         int[] clientIds = new int[len];
+                //         for(int i = 0; i < len; i++)
+                //         {
+                //             int clientID = NetworkExtensions.ReadInt(ref _buffer, ref readPos);
+                //             clientIds[i] = clientID;
+                //         }
+                //         int randomClientToConnect = CommonFunctioncs.RandomRange(0, len);
+                //         Logger.Log("Random client to connect : "+randomClientToConnect)                        ;
+                //         break;
+                //     case MessageType.DisconnectFromServer:
+                //         Logger.Log("Received Server Disconnect");
+                //         _stopProgram = true;
+                //         break;
+                // }
             }
             await Task.Delay(10);
         }

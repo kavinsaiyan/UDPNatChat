@@ -55,7 +55,7 @@ public class ClientCore : INetworkOperator
         return false;
     }
 
-    public void ProcessMessage(MessageType messageType,in byte[] data, in int pos, in int len, in IPAddress senderAddress)
+    public void ProcessMessage(MessageType messageType,in byte[] data, in int pos, in int len, IPAddress senderAddress)
     {
         switch(messageType)
         {

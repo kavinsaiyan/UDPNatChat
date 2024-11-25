@@ -1,8 +1,8 @@
 using System.Net;
-using UDPConsoleCommonLib;
+using System.Threading.Tasks;
 public interface INetworkCommunicator
 {
     public ByteArrayBuffer Buffer { get; }
-    public void SendTo(IPAddress[] addresses);
+    public Task SendToAsync(IPAddress[] addresses);
     public bool CanSend();
 }
