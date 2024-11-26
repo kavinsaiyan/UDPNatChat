@@ -42,7 +42,7 @@ public class RelayCommunicator : INetworkOperator
         await _networkCommunicator.SendToAsync(_relayIP);
 
         Logger.Log("sent initial data");
-        // StartSendingHeartbeat();
+        StartSendingHeartbeat();
     }
 
     public void StartSendingHeartbeat()
