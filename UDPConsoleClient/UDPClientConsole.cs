@@ -15,6 +15,8 @@ public class UDPClientConsole
     private static bool _requestClientList = false;
     private static NetworkCommunicator networkCommunicator;
     private static INetworkOperator[] networkOperators;
+    private static RelayCommunicator relayCommunicator;
+    private static ClientCore clientCore;
 
     public static async Task Main(string[] args)
     {
@@ -28,7 +30,9 @@ public class UDPClientConsole
 
             networkCommunicator = new NetworkCommunicator(_client);
 
-            networkOperators = new INetworkOperator[] { new RelayCommunicator(networkCommunicator)};
+            relayCommunicator = new RelayCommunicator(networkCommunicator);
+            clientCore = new ClientCore(networkCommunicator);
+            networkOperators = new INetworkOperator[] { relayCommunicator, clientCore };
 
             _ = Task.Run(ReadAsync);
 
@@ -75,7 +79,10 @@ public class UDPClientConsole
                 for(int i=0; i< networkOperators.Length; i++)
                 {
                     if(networkOperators[i].CanProcessMessage(messageType))
-                        networkOperators[i].ProcessMessage(messageType, in _buffer, 0, endPoint.Address);
+                    {
+                        networkOperators[i].ProcessMessage(messageType, ref _buffer, ref readPos, endPoint.Address);
+                        continue;
+                    }
                 }
                 // Logger.Log("message type is "+messageType);
                 // switch(messageType)
@@ -89,7 +96,7 @@ public class UDPClientConsole
                 //             clientIds[i] = clientID;
                 //         }
                 //         int randomClientToConnect = CommonFunctioncs.RandomRange(0, len);
-                //         Logger.Log("Random client to connect : "+randomClientToConnect)                        ;
+                //         Logger.Log("Random client to connect : "+randomClientToConnect);
                 //         break;
                 //     case MessageType.DisconnectFromServer:
                 //         Logger.Log("Received Server Disconnect");
@@ -105,24 +112,26 @@ public class UDPClientConsole
     {
         while (!_stopProgram)
         {
-            if (_client.Connected && _client.Poll(-1, SelectMode.SelectWrite))
+            // if (_client.Connected && _client.Poll(-1, SelectMode.SelectWrite))
+            // if(networkCommunicator.CanSend())
             {
                 int pos =0;
                 if(_initialDataSent == false)
                 {
                     _initialDataSent = true;
-                    byte messageType = (byte)MessageType.InitialData;
+                    // byte messageType = (byte)MessageType.InitialData;
 
-                    NetworkExtensions.WriteByte(ref _buffer, ref pos, in messageType);
+                    // NetworkExtensions.WriteByte(ref _buffer, ref pos, in messageType);
 
-                    string localIp = GetLocalIPAddress().ToString();
-                    NetworkExtensions.WriteString(ref _buffer, ref pos, in localIp);
+                    // string localIp = GetLocalIPAddress().ToString();
+                    // NetworkExtensions.WriteString(ref _buffer, ref pos, in localIp);
                     
-                    int port = 7777;
-                    NetworkExtensions.WriteInt(ref _buffer, ref pos, in port);
+                    // int port = 7777;
+                    // NetworkExtensions.WriteInt(ref _buffer, ref pos, in port);
 
-                    int bytesSent =  await _client.SendAsync(new ArraySegment<byte>(_buffer, 0, pos));
+                    // int bytesSent =  await _client.SendAsync(new ArraySegment<byte>(_buffer, 0, pos));
                     // Logger.Log("Written type is " + messageType+ " and sent bytes is "+ bytesSent);
+                    await relayCommunicator.SendInitialDataAsync();
                 }
                 else if(_requestClientList)
                 {
@@ -134,9 +143,9 @@ public class UDPClientConsole
                 }
                 else
                 {
-                    byte messageType = (byte)MessageType.HeartBeat;
-                    NetworkExtensions.WriteByte(ref _buffer, ref pos, in messageType);
-                    int bytesSent =  await _client.SendAsync(new ArraySegment<byte>(_buffer, 0, pos));
+                    // byte messageType = (byte)MessageType.HeartBeat;
+                    // NetworkExtensions.WriteByte(ref _buffer, ref pos, in messageType);
+                    // int bytesSent =  await _client.SendAsync(new ArraySegment<byte>(_buffer, 0, pos));
                     // Logger.Log("Written type is " + messageType+ " and sent bytes is "+ bytesSent);
                 }
                 await Task.Delay(100);

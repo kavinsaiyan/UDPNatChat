@@ -55,10 +55,21 @@ public class ClientCore : INetworkOperator
         return false;
     }
 
-    public void ProcessMessage(MessageType messageType,in byte[] data, in int pos, in int len, IPAddress senderAddress)
+    public void ProcessMessage(MessageType messageType,ref byte[] data, ref int pos, IPAddress senderAddress)
     {
         switch(messageType)
         {
+            case MessageType.ClientListResponse:
+                int len = NetworkExtensions.ReadInt(ref data, ref pos);
+                int[] clientIds = new int[len];
+                for (int i = 0; i < len; i++)
+                {
+                    int clientID = NetworkExtensions.ReadInt(ref data, ref pos);
+                    clientIds[i] = clientID;
+                }
+                int randomClientToConnect = CommonFunctioncs.RandomRange(0, len);
+                Logger.Log("Random client to connect : " + randomClientToConnect);
+                break;
             default:
                 Logger.LogError("[ClientCore.cs/ProcessMessage]: Unhandled message type "+messageType);
                 break;

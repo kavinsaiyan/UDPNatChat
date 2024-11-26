@@ -5,15 +5,15 @@ using UDPConsoleCommonLib;
 
 public class RelayCommunicator : INetworkOperator
 {
-    private const int HEART_BEAT_INTERVAL = 10;
+    private const int HEART_BEAT_INTERVAL = 100;
     private INetworkCommunicator _networkCommunicator;
-    private IPAddress[] _relayIP;
+    private IPEndPoint[] _relayIP;
     private bool _sendHeartBeat = false;
     public RelayCommunicator(INetworkCommunicator networkCommunicator)    
     {
         _networkCommunicator = networkCommunicator;
-        _relayIP = new IPAddress[] { 
-            IPAddress.Parse("127.0.0.1")
+        _relayIP = new IPEndPoint[] { 
+            new IPEndPoint(IPAddress.Loopback, 7777)
         };
     }
 
@@ -22,12 +22,12 @@ public class RelayCommunicator : INetworkOperator
         return messageType == MessageType.HeartBeat;
     }
 
-    public void ProcessMessage(MessageType messageType, in byte[] data, in int pos, in int len, IPAddress senderAddress)
+    public void ProcessMessage(MessageType messageType, ref byte[] data, ref int pos, IPAddress senderAddress)
     {
         Logger.Log("Received Heartbeat from "+senderAddress.ToString());
     }
 
-    public void SendInitialData()
+    public async Task SendInitialDataAsync()
     {
         byte messageType = (byte)MessageType.InitialData;
         _networkCommunicator.Buffer.ResetPointer();
@@ -39,7 +39,10 @@ public class RelayCommunicator : INetworkOperator
 
         _networkCommunicator.Buffer.WriteInt(7777);
 
-        Task.Run(() => _networkCommunicator.SendToAsync(_relayIP));
+        await _networkCommunicator.SendToAsync(_relayIP);
+
+        Logger.Log("sent initial data");
+        // StartSendingHeartbeat();
     }
 
     public void StartSendingHeartbeat()
@@ -56,11 +59,14 @@ public class RelayCommunicator : INetworkOperator
 
     private async Task SendHeartbeat()
     {
+        Logger.Log("Starting to send heart beat");
         while (_sendHeartBeat)
         {
+            Logger.Log("Inside loop to send heart beat");
             await Task.Delay(HEART_BEAT_INTERVAL);
             if (_networkCommunicator.CanSend())
             {
+                Logger.Log("sending heart beat");
                 _networkCommunicator.Buffer.ResetPointer();
                 byte messageType = (byte)MessageType.HeartBeat;
                 _networkCommunicator.Buffer.WriteByte(in messageType);

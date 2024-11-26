@@ -32,7 +32,7 @@ public static class UDPServerConsole
             //server.Listen();
 
             _ = Task.Run(ListenForClientsAsync);
-
+            Logger.Log("Server started listening..");
             await Task.Run(SendHeartBeatAsync);
         }
         catch (Exception ex)
@@ -105,7 +105,7 @@ public static class UDPServerConsole
                     Logger.LogError("[UPDServerConsole.cs/ProcessRead]: could not parse ip " + localIp);
                 break;
             case MessageType.HeartBeat:
-                // Logger.Log("[UPDServerConsole.cs/ProcessRead]: Heart beat received from "+ currentClient.clientID);
+                Logger.Log("[UPDServerConsole.cs/ProcessRead]: Heart beat received from "+ currentClient.clientID);
                 currentClient.heartBeatMissCount = 0;
                 break;
             case MessageType.RequestClientList:
