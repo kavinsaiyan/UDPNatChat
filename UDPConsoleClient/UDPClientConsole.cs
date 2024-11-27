@@ -20,6 +20,7 @@ public class UDPClientConsole
 
     public static async Task Main(string[] args)
     {
+        // TaskScheduler.UnobservedTaskException += (s,e) => Logger.Log(e.ToString());
         _ = Task.Run(ListenForUserInput);
 
         try
@@ -119,18 +120,7 @@ public class UDPClientConsole
                 if(_initialDataSent == false)
                 {
                     _initialDataSent = true;
-                    // byte messageType = (byte)MessageType.InitialData;
 
-                    // NetworkExtensions.WriteByte(ref _buffer, ref pos, in messageType);
-
-                    // string localIp = GetLocalIPAddress().ToString();
-                    // NetworkExtensions.WriteString(ref _buffer, ref pos, in localIp);
-                    
-                    // int port = 7777;
-                    // NetworkExtensions.WriteInt(ref _buffer, ref pos, in port);
-
-                    // int bytesSent =  await _client.SendAsync(new ArraySegment<byte>(_buffer, 0, pos));
-                    // Logger.Log("Written type is " + messageType+ " and sent bytes is "+ bytesSent);
                     await relayCommunicator.SendInitialDataAsync();
                 }
                 else if(_requestClientList)
@@ -143,10 +133,10 @@ public class UDPClientConsole
                 }
                 else
                 {
-                    // byte messageType = (byte)MessageType.HeartBeat;
-                    // NetworkExtensions.WriteByte(ref _buffer, ref pos, in messageType);
-                    // int bytesSent =  await _client.SendAsync(new ArraySegment<byte>(_buffer, 0, pos));
-                    // Logger.Log("Written type is " + messageType+ " and sent bytes is "+ bytesSent);
+                    byte messageType = (byte)MessageType.HeartBeat;
+                    NetworkExtensions.WriteByte(ref _buffer, ref pos, in messageType);
+                    int bytesSent =  await _client.SendAsync(new ArraySegment<byte>(_buffer, 0, pos));
+                    Logger.Log("Written type is " + messageType+ " and sent bytes is "+ bytesSent);
                 }
                 await Task.Delay(100);
             }
