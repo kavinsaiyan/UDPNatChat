@@ -24,7 +24,7 @@ public class RelayCommunicator : INetworkOperator
 
     public void ProcessMessage(MessageType messageType, ref byte[] data, ref int pos, IPAddress senderAddress)
     {
-        Logger.Log("Received Heartbeat from "+senderAddress.ToString());
+        // Logger.Log("Received Heartbeat from "+senderAddress.ToString());
     }
 
     public async Task SendInitialDataAsync()
@@ -41,7 +41,6 @@ public class RelayCommunicator : INetworkOperator
 
         await _networkCommunicator.SendToAsync(_relayIP);
 
-        Logger.Log("sent initial data");
         StartSendingHeartbeat();
     }
 
@@ -59,14 +58,11 @@ public class RelayCommunicator : INetworkOperator
 
     private async Task SendHeartbeat()
     {
-        Logger.Log("Starting to send heart beat");
         while (_sendHeartBeat)
         {
-            Logger.Log("Inside loop to send heart beat");
             await Task.Delay(HEART_BEAT_INTERVAL);
-            if (_networkCommunicator.CanSend())
+            // if (_networkCommunicator.CanSend())
             {
-                Logger.Log("sending heart beat");
                 _networkCommunicator.Buffer.ResetPointer();
                 byte messageType = (byte)MessageType.HeartBeat;
                 _networkCommunicator.Buffer.WriteByte(in messageType);

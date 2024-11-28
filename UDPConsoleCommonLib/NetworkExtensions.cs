@@ -21,6 +21,7 @@ public static class NetworkExtensions
         int strlen = BitConverter.ToInt32(data, pos);
         pos += 4;
         string readStr = Encoding.ASCII.GetString(data, pos, strlen);
+        pos += strlen;
         return readStr;
     }
 
@@ -33,6 +34,7 @@ public static class NetworkExtensions
     {
         byte[] writtenBytes = BitConverter.GetBytes(intData);
         Buffer.BlockCopy(writtenBytes,0,data,pos,writtenBytes.Length);
+        pos += 4;
     }
 
     public static void WriteString(ref byte[] data, ref int pos, in string stringData)

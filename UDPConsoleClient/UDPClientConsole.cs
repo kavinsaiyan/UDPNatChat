@@ -71,7 +71,7 @@ public class UDPClientConsole
         IPEndPoint endPoint = null;
         while (!_stopProgram)
         {
-            if(_client.Connected && _client.Poll(-1,SelectMode.SelectRead))
+            // if(_client.Connected && _client.Poll(-1,SelectMode.SelectRead))
             {
                 await _client.ReceiveFromAsync(_buffer, endPoint);
 
@@ -133,10 +133,10 @@ public class UDPClientConsole
                 }
                 else
                 {
-                    byte messageType = (byte)MessageType.HeartBeat;
-                    NetworkExtensions.WriteByte(ref _buffer, ref pos, in messageType);
-                    int bytesSent =  await _client.SendAsync(new ArraySegment<byte>(_buffer, 0, pos));
-                    Logger.Log("Written type is " + messageType+ " and sent bytes is "+ bytesSent);
+                    // byte messageType = (byte)MessageType.HeartBeat;
+                    // NetworkExtensions.WriteByte(ref _buffer, ref pos, in messageType);
+                    // int bytesSent =  await _client.SendAsync(new ArraySegment<byte>(_buffer, 0, pos));
+                    // Logger.Log("Written type is " + messageType+ " and sent bytes is "+ bytesSent);
                 }
                 await Task.Delay(100);
             }

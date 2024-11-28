@@ -72,11 +72,9 @@ public static class UDPServerConsole
         {
             EndPoint remoteEndPoint = new IPEndPoint(IPAddress.Any,0);
 
-            // if(server.Poll(-1, SelectMode.SelectRead))
+            // if(server.Poll(-1, SelectMode.SelectRead)) // seems like polling is not required for UDP
             {
-                Logger.Log("Trying to receive data");
                 server.ReceiveFrom(buffer, 0, buffer.Length, 0, ref remoteEndPoint);
-                Logger.Log($"Receiving data from {remoteEndPoint}");
                 if(TryGetClient(remoteEndPoint, out ClientData currentClient))
                 {
                     await ProcessRead(currentClient);
@@ -89,13 +87,10 @@ public static class UDPServerConsole
                     newClient.remoteEndPoint = (IPEndPoint)remoteEndPoint;
                     newClient.clientID = connectionCounter++;
 
-                    Logger.Log($"Client {newClient.clientID} Connected");
                     await ProcessRead(newClient);
                 }
-                Logger.Log("read finish");
             }
             await Task.Delay(100);
-            Logger.Log("wait finish");
         }
     }
 
@@ -103,25 +98,23 @@ public static class UDPServerConsole
     {
         int readPos = 0,writePos = 0;
         MessageType messageType = (MessageType)buffer[readPos++];
-        Logger.Log("message type is "+messageType);
+        // Logger.Log("message type is "+messageType);
 
         switch (messageType)
         {
             case MessageType.InitialData:
-                Logger.Log("initial data read 1");
                 string localIp = NetworkExtensions.ReadString(ref buffer, ref readPos);
-                int refPos2 = readPos - 4;
-                int port = NetworkExtensions.ReadInt(ref buffer, ref refPos2);
-                Logger.Log($"initial data read 2 localIP is {localIp} and port is {port}");
-                // throw new Exception("custom");
+                int port = NetworkExtensions.ReadInt(ref buffer, ref readPos);
                 if(IPAddress.TryParse(localIp, out IPAddress localIPAddress))
+                {
                     currentClient.localEndPoint = new IPEndPoint(localIPAddress,port);
+                    Logger.Log("[UDPServerConsole.cs/ProcessRead]: Connected a client with ID : " + currentClient.clientID);
+                }
                 else
                     Logger.LogError("[UPDServerConsole.cs/ProcessRead]: could not parse ip " + localIp);
-                Logger.Log("initial data read 3");
                 break;
             case MessageType.HeartBeat:
-                Logger.Log("[UPDServerConsole.cs/ProcessRead]: Heart beat received from "+ currentClient.clientID);
+                // Logger.Log("[UPDServerConsole.cs/ProcessRead]: Heart beat received from "+ currentClient.clientID);
                 currentClient.heartBeatMissCount = 0;
                 break;
             case MessageType.RequestClientList:
@@ -140,7 +133,6 @@ public static class UDPServerConsole
                 Logger.LogError("[UPDServerConsole.cs/ProcessRead]: Unhandled for " + messageType);
                 break;
         }
-        Logger.Log("reached end of read");
     }
 
     private static async Task SendHeartBeatAsync()
