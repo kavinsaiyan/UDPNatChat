@@ -1,5 +1,5 @@
-using System;
 using System.Net;
+using System.Threading.Tasks;
 using UDPConsoleClient;
 using UDPConsoleCommonLib;
 
@@ -12,11 +12,13 @@ public class ClientCore : INetworkOperator
 
     private readonly MessageType[] _acceptedMessages;
     private INetworkCommunicator _networkCommunicator;
+    private IClientCoreResolver _clientCoreResolver;
 
-    public ClientCore(INetworkCommunicator networkCommunicator)
+    public ClientCore(INetworkCommunicator networkCommunicator, IClientCoreResolver clientCoreResolver)
     {
         _networkCommunicator = networkCommunicator;
-        _acceptedMessages = new MessageType[] { MessageType.ClientListResponse , MessageType.TryConnectToClient };
+        _clientCoreResolver = clientCoreResolver;
+        _acceptedMessages = new MessageType[] { MessageType.ClientListResponse, MessageType.OtherClientIP };
     }
 
     public void SetOtherClientID(int id)
@@ -30,12 +32,13 @@ public class ClientCore : INetworkOperator
         _otherClient.SetOtherClientIPAddresses(remoteEP, localEP);
     }
 
-    public bool IsMessageReceivedFromOtherClient(in IPAddress messageReceivingEndPoint)
+    public bool IsMessageReceivedFromOtherClient(in IPEndPoint messageReceivingEndPoint)
     {
-        if(_otherClient.localEP.Equals(messageReceivingEndPoint))
+        if(_otherClient.localEP.Equals(messageReceivingEndPoint.Address))
             _otherClient.endPointToUse = EndPointToUse.Local;
-        if(_otherClient.remoteEP.Equals(messageReceivingEndPoint))
+        if(_otherClient.remoteEP.Equals(messageReceivingEndPoint.Address))
             _otherClient.endPointToUse = EndPointToUse.Remote;
+        _otherClient.port = messageReceivingEndPoint.Port;
 
         if(_otherClient.endPointToUse != EndPointToUse.Both)
         {
@@ -55,21 +58,28 @@ public class ClientCore : INetworkOperator
         return false;
     }
 
-    public void ProcessMessage(MessageType messageType,ref byte[] data, ref int pos, IPAddress senderAddress)
+    public async Task ProcessMessageAsync(MessageType messageType, ByteArrayBuffer buffer, IPAddress senderAddress)
     {
-        switch(messageType)
+        Logger.Log("process message " + messageType);
+        switch (messageType)
         {
             case MessageType.ClientListResponse:
-                int len = NetworkExtensions.ReadInt(ref data, ref pos);
+                int len = buffer.ReadInt();
                 int[] clientIds = new int[len];
                 for (int i = 0; i < len; i++)
                 {
-                    int clientID = NetworkExtensions.ReadInt(ref data, ref pos);
+                    int clientID = buffer.ReadInt();
                     clientIds[i] = clientID;
                 }
                 int randomClientToConnect = CommonFunctioncs.RandomRange(0, len);
-                Logger.Log("Random client to connect : " + randomClientToConnect);
+                SetOtherClientID(randomClientToConnect);
+                await _clientCoreResolver.RequestClientIP(randomClientToConnect);
                 break;
+            case MessageType.OtherClientIP:
+                string otherClientIP = buffer.ReadString();
+                int port = buffer.ReadInt();
+                Logger.Log($"[ClientCore.cs/ProcessMessage]: Other client ip is {otherClientIP} and port is {port}");
+                break;    
             default:
                 Logger.LogError("[ClientCore.cs/ProcessMessage]: Unhandled message type "+messageType);
                 break;
@@ -84,6 +94,8 @@ public class ConnectedClientData
     public IPAddress remoteEP;
     public IPAddress localEP;
     public EndPointToUse endPointToUse;
+    public int port = 7777;
+    public IPEndPoint[] endPoints;
 
     public void SetOtherClientIPAddresses(IPAddress remoteEP, IPAddress localEP)
     {
@@ -91,4 +103,9 @@ public class ConnectedClientData
         this.localEP = localEP;
         endPointToUse = EndPointToUse.Both;
     }
+}
+
+public interface IClientCoreResolver
+{
+    public Task RequestClientIP(int id);
 }

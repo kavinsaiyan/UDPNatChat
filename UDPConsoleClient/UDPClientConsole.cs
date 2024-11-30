@@ -8,8 +8,6 @@ namespace UDPConsoleClient;
 public class UDPClientConsole 
 {
     private static bool _stopProgram = false;
-    private static byte[] _buffer = new byte[4096];
-
     private static Socket _client = null;
     private static bool _initialDataSent = false;
     private static bool _requestClientList = false;
@@ -21,7 +19,7 @@ public class UDPClientConsole
     public static async Task Main(string[] args)
     {
         // TaskScheduler.UnobservedTaskException += (s,e) => Logger.Log(e.ToString());
-        _ = Task.Run(ListenForUserInput);
+        _ = Task.Run(ListenForUserInput).ContinueWith(t => { if (t.Exception != null) Logger.LogError(t.Exception.ToString()); });
 
         try
         {
@@ -32,10 +30,10 @@ public class UDPClientConsole
             networkCommunicator = new NetworkCommunicator(_client);
 
             relayCommunicator = new RelayCommunicator(networkCommunicator);
-            clientCore = new ClientCore(networkCommunicator);
+            clientCore = new ClientCore(networkCommunicator, relayCommunicator);
             networkOperators = new INetworkOperator[] { relayCommunicator, clientCore };
 
-            _ = Task.Run(ReadAsync);
+            _ = Task.Run(ReadAsync).ContinueWith(t => { if (t.Exception != null) Logger.LogError(t.Exception.ToString()); });
 
             await Task.Run(WriteAsync);
         }
@@ -68,42 +66,21 @@ public class UDPClientConsole
 
     public static async Task ReadAsync()
     {
-        IPEndPoint endPoint = null;
+        IPEndPoint endPoint = new IPEndPoint(IPAddress.Any,0);
         while (!_stopProgram)
         {
-            // if(_client.Connected && _client.Poll(-1,SelectMode.SelectRead))
-            {
-                await _client.ReceiveFromAsync(_buffer, endPoint);
+            await _client.ReceiveFromAsync(networkCommunicator.Buffer.Buffer, endPoint);
 
-                int readPos = 0;
-                MessageType messageType = (MessageType) NetworkExtensions.ReadByte(ref _buffer, ref readPos);
-                for(int i=0; i< networkOperators.Length; i++)
+            networkCommunicator.Buffer.ResetPointer();
+            MessageType messageType = (MessageType)networkCommunicator.Buffer.ReadByte();
+            // Logger.Log("received message "+messageType);
+            for (int i = 0; i < networkOperators.Length; i++)
+            {
+                if (networkOperators[i].CanProcessMessage(messageType))
                 {
-                    if(networkOperators[i].CanProcessMessage(messageType))
-                    {
-                        networkOperators[i].ProcessMessage(messageType, ref _buffer, ref readPos, endPoint.Address);
-                        continue;
-                    }
+                    await networkOperators[i].ProcessMessageAsync(messageType, networkCommunicator.Buffer, endPoint.Address);
+                    continue;
                 }
-                // Logger.Log("message type is "+messageType);
-                // switch(messageType)
-                // {
-                //     case MessageType.ClientListResponse:
-                //         int len = NetworkExtensions.ReadInt(ref _buffer, ref readPos);
-                //         int[] clientIds = new int[len];
-                //         for(int i = 0; i < len; i++)
-                //         {
-                //             int clientID = NetworkExtensions.ReadInt(ref _buffer, ref readPos);
-                //             clientIds[i] = clientID;
-                //         }
-                //         int randomClientToConnect = CommonFunctioncs.RandomRange(0, len);
-                //         Logger.Log("Random client to connect : "+randomClientToConnect);
-                //         break;
-                //     case MessageType.DisconnectFromServer:
-                //         Logger.Log("Received Server Disconnect");
-                //         _stopProgram = true;
-                //         break;
-                // }
             }
             await Task.Delay(10);
         }
@@ -113,47 +90,17 @@ public class UDPClientConsole
     {
         while (!_stopProgram)
         {
-            // if (_client.Connected && _client.Poll(-1, SelectMode.SelectWrite))
-            // if(networkCommunicator.CanSend())
+            if (_initialDataSent == false)
             {
-                int pos =0;
-                if(_initialDataSent == false)
-                {
-                    _initialDataSent = true;
-
-                    await relayCommunicator.SendInitialDataAsync();
-                }
-                else if(_requestClientList)
-                {
-                    _requestClientList = false;
-                    
-                    byte messageType = (byte) MessageType.RequestClientList;
-                    NetworkExtensions.WriteByte(ref _buffer, ref pos, in messageType);
-                    int bytesSent =  await _client.SendAsync(new ArraySegment<byte>(_buffer, 0, pos));
-                }
-                else
-                {
-                    // byte messageType = (byte)MessageType.HeartBeat;
-                    // NetworkExtensions.WriteByte(ref _buffer, ref pos, in messageType);
-                    // int bytesSent =  await _client.SendAsync(new ArraySegment<byte>(_buffer, 0, pos));
-                    // Logger.Log("Written type is " + messageType+ " and sent bytes is "+ bytesSent);
-                }
-                await Task.Delay(100);
+                _initialDataSent = true;
+                await relayCommunicator.SendInitialDataAsync();
+            }
+            else if (_requestClientList)
+            {
+                _requestClientList = false;
+                await relayCommunicator.RequestClientListAsync();
             }
             await Task.Delay(100);
         }
-    }
-
-    public static IPAddress GetLocalIPAddress()
-    {
-        IPHostEntry hostEntry = Dns.GetHostEntry(Dns.GetHostName());
-        for(int i=0; i < hostEntry.AddressList.Length; i++)
-        {
-            if(hostEntry.AddressList[i].AddressFamily == AddressFamily.InterNetwork)
-            {
-                return hostEntry.AddressList[i];
-            }
-        }
-        return IPAddress.Any;
     }
 }

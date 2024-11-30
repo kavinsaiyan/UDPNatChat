@@ -1,7 +1,8 @@
 using System.Net;
+using System.Threading.Tasks;
 using UDPConsoleCommonLib;
 public interface INetworkOperator
 {
     public bool CanProcessMessage(MessageType messageType);
-    public void ProcessMessage(MessageType messageType, ref byte[] data, ref int pos, IPAddress senderAddress);
+    public Task ProcessMessageAsync(MessageType messageType, ByteArrayBuffer buffer, IPAddress senderAddress);
 }

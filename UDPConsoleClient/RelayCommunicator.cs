@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using UDPConsoleClient;
 using UDPConsoleCommonLib;
 
-public class RelayCommunicator : INetworkOperator
+public class RelayCommunicator : INetworkOperator, IClientCoreResolver
 {
     private const int HEART_BEAT_INTERVAL = 100;
     private INetworkCommunicator _networkCommunicator;
@@ -22,9 +22,10 @@ public class RelayCommunicator : INetworkOperator
         return messageType == MessageType.HeartBeat;
     }
 
-    public void ProcessMessage(MessageType messageType, ref byte[] data, ref int pos, IPAddress senderAddress)
+    public Task ProcessMessageAsync(MessageType messageType, ByteArrayBuffer buffer, IPAddress senderAddress)
     {
         // Logger.Log("Received Heartbeat from "+senderAddress.ToString());
+        return Task.CompletedTask;
     }
 
     public async Task SendInitialDataAsync()
@@ -69,5 +70,26 @@ public class RelayCommunicator : INetworkOperator
                 await _networkCommunicator.SendToAsync(_relayIP);
             }
         }
+    }
+
+    public async Task RequestClientListAsync()
+    {
+        Logger.Log("requesting clients");
+        _networkCommunicator.Buffer.ResetPointer();
+        byte messageType = (byte)MessageType.RequestClientList;
+        _networkCommunicator.Buffer.WriteByte(in messageType);
+        await _networkCommunicator.SendToAsync(_relayIP);
+    }
+    
+    public async Task RequestClientIP(int id)
+    {
+        _networkCommunicator.Buffer.ResetPointer();
+
+        byte messageType = (byte)MessageType.RequestingClientIP;
+        _networkCommunicator.Buffer.WriteByte(messageType);
+
+        _networkCommunicator.Buffer.WriteInt(id);
+
+        await _networkCommunicator.SendToAsync(_relayIP);
     }
 }

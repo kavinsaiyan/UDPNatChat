@@ -37,4 +37,9 @@ public class ByteArrayBuffer
     {
         NetworkExtensions.WriteString(ref _buffer, ref _pos, in line);
     }
+
+    public ArraySegment<byte> GetArraySlice()
+    {
+        return new ArraySegment<byte>(_buffer,0,_pos);
+    }
 }

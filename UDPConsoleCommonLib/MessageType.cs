@@ -3,5 +3,6 @@
 public enum MessageType : byte
 {
     None, InitialData, HeartBeat, RequestClientList, ConnectToClient, 
-    ClientListResponse, DisconnectFromServer, TryConnectToClient 
+    ClientListResponse, DisconnectFromServer, TryConnectToClient, RequestingClientIP, StartConnectingToOtherClient,
+    OtherClientIP
 }

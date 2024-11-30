@@ -16,12 +16,13 @@ public class NetworkCommunicator : INetworkCommunicator
 
     public bool CanSend()
     {
-        return _socket.Connected && _socket.Poll(-1, SelectMode.SelectWrite);
+        // return _socket.Connected && _socket.Poll(-1, SelectMode.SelectWrite);
+        return true; // since the concept of polling is not applicable to UDP
     }
 
     public async Task SendToAsync(IPEndPoint[] endPoints)
     {
-        var data = new ArraySegment<byte>(byteArrayBuffer.Buffer,0, byteArrayBuffer.Pos);
+        var data = byteArrayBuffer.GetArraySlice();
         for(int i =0; i< endPoints.Length; i++)
         {
             await _socket.SendToAsync(data, endPoints[i]);
