@@ -74,7 +74,7 @@ public class RelayCommunicator : INetworkOperator, IClientCoreResolver
 
     public async Task RequestClientListAsync()
     {
-        Logger.Log("requesting clients");
+        // Logger.Log("Requesting clients");
         _networkCommunicator.Buffer.ResetPointer();
         byte messageType = (byte)MessageType.RequestClientList;
         _networkCommunicator.Buffer.WriteByte(in messageType);
@@ -89,7 +89,7 @@ public class RelayCommunicator : INetworkOperator, IClientCoreResolver
         _networkCommunicator.Buffer.WriteByte(messageType);
 
         _networkCommunicator.Buffer.WriteInt(id);
-
+        Logger.Log("[RelayCommunicator.cs/RequestClientIP]: requesting client ip for id : "+id);
         await _networkCommunicator.SendToAsync(_relayIP);
     }
 }

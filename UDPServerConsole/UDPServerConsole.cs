@@ -22,7 +22,6 @@ public static class UDPServerConsole
     {
         // TaskScheduler.UnobservedTaskException += (s,e) => Logger.Log(e.ToString());
         _ = Task.Run(ListenForUserStop).ContinueWith(t => { if(t.Exception!=null) Logger.LogError(t.Exception.ToString()); });
-        // _ = Task.Run(ListenForUserStop);
 
         server = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
         try
@@ -33,7 +32,6 @@ public static class UDPServerConsole
             //server.Listen();
 
             _ = Task.Run(ListenForClientsAsync).ContinueWith(t => { if(t.Exception!=null) Logger.LogError(t.Exception.ToString()); });
-            // _ = Task.Run(ListenForClientsAsync);
         
             Logger.Log("Server started listening..");
             await Task.Run(SendHeartBeatAsync);
@@ -114,23 +112,27 @@ public static class UDPServerConsole
             case MessageType.RequestClientList:
                 byteArrayBuffer.ResetPointer();
                 byteArrayBuffer.WriteByte((byte)MessageType.ClientListResponse);
-                byteArrayBuffer.WriteInt(clientData.Count);
+                byteArrayBuffer.WriteInt(clientData.Count-1);
 
                 for(int i=0; i< clientData.Count;i++)
                 {
-                    if(clientData[i] == currentClient)
+                    if(clientData[i].clientID == currentClient.clientID)
                         continue;
                     byteArrayBuffer.WriteInt(in clientData[i].clientID);
                 }
                 await server.SendToAsync(byteArrayBuffer.GetArraySlice(),currentClient.remoteEndPoint);
                 break;    
             case MessageType.RequestingClientIP:
-                byteArrayBuffer.ResetPointer();
-                byteArrayBuffer.WriteByte((byte)MessageType.OtherClientIP);
-                byteArrayBuffer.WriteString("127.0.0.1"); //replying with dummy client ID
-                byteArrayBuffer.WriteInt(5644); 
+                int requestedID = byteArrayBuffer.ReadInt();
+                if(TryGetClient(requestedID, out ClientData otherClient))
+                {
+                    byteArrayBuffer.ResetPointer();
+                    byteArrayBuffer.WriteByte((byte)MessageType.OtherClientIP);
+                    byteArrayBuffer.WriteString(otherClient.remoteEndPoint.Address.ToString()); 
+                    byteArrayBuffer.WriteInt(otherClient.remoteEndPoint.Port);
 
-                await server.SendToAsync(byteArrayBuffer.GetArraySlice(),currentClient.remoteEndPoint);
+                    await server.SendToAsync(byteArrayBuffer.GetArraySlice(), currentClient.remoteEndPoint);
+                }
                 break;
             default:
                 Logger.LogError("[UPDServerConsole.cs/ProcessRead]: Unhandled for " + messageType);
@@ -168,6 +170,20 @@ public static class UDPServerConsole
         for (int i = 0; i < clientData.Count;i++)
         {
             if (clientData[i].remoteEndPoint.Equals(remoteEndPoint))
+            {
+                currentClient = clientData[i];
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static bool TryGetClient(int id, out ClientData currentClient) 
+    {
+        currentClient = null;
+        for (int i = 0; i < clientData.Count;i++)
+        {
+            if (clientData[i].clientID.Equals(id))
             {
                 currentClient = clientData[i];
                 return true;

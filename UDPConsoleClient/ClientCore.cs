@@ -60,18 +60,23 @@ public class ClientCore : INetworkOperator
 
     public async Task ProcessMessageAsync(MessageType messageType, ByteArrayBuffer buffer, IPAddress senderAddress)
     {
-        Logger.Log("process message " + messageType);
+        Logger.Log("[ClientCore.cs/ProcessMessageAsync]: Message type is " + messageType);
         switch (messageType)
         {
             case MessageType.ClientListResponse:
                 int len = buffer.ReadInt();
+                if(len <= 0)
+                {
+                    Logger.LogError($"[ClientCore.cs/ProcessMessageAsync]: There are no clients to connect to!");
+                    break;
+                }
                 int[] clientIds = new int[len];
                 for (int i = 0; i < len; i++)
                 {
                     int clientID = buffer.ReadInt();
                     clientIds[i] = clientID;
                 }
-                int randomClientToConnect = CommonFunctioncs.RandomRange(0, len);
+                int randomClientToConnect = clientIds[CommonFunctioncs.RandomRange(0, len)];
                 SetOtherClientID(randomClientToConnect);
                 await _clientCoreResolver.RequestClientIP(randomClientToConnect);
                 break;
